@@ -1,0 +1,1 @@
+{"distribution": "LogNormal", "k": 6, "layers": [100, 100], "learning_rate": 0.0001}
