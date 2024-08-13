@@ -8,6 +8,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import ParameterGrid
 
 from sksurv.metrics import concordance_index_ipcw
+from pycox.datasets import support, metabric
 
 from hazardous.data._seer import (
     load_seer,
@@ -235,13 +236,12 @@ def evaluate(
             print("Computing Censlog")
 
         censlog = CensoredNegativeLogLikelihoodSimple().loss(
-            y_pred, y_test["duration_test"], y_test["event"], time_grid
+            y_pred, y_test["duration"], y_test["event"], time_grid
         )
         scores["censlog"] = round(censlog, 4)        
 
     print(f"{event_specific_ibs=}")
     print(f"{event_specific_c_index}")
-    print(f"{accuracy=}")
 
     return scores
 
@@ -346,10 +346,41 @@ def load_dataset(dataset_name, random_state):
             "numeric_columns": list(bunch.X.columns),
             "categorical_columns": [],
         })
+    
+    elif dataset_name == "support":
+        df = support.read_df()
+        categorical_features = ["x1", "x2", "x3", "x4", "x5", "x6"]
+        numerical_features = ["x0", "x7", "x8", "x9", "x10", "x11", "x12", "x13"]
+        bunch = _pycox_preprocessing(
+            df, categorical_features, numerical_features, dataset_params
+        ) 
+    
+    elif dataset_name == "metabric":
+        df = metabric.read_df()
+        categorical_features = ["x4", "x5", "x6", "x7"]
+        numerical_features = ["x0", "x1", "x2", "x3", "x8"]
+        bunch = _pycox_preprocessing(
+            df, categorical_features, numerical_features, dataset_params
+        ) 
+
     else:
         raise ValueError(dataset_name)
 
     return bunch, dataset_params
+
+
+def _pycox_preprocessing(df, categorical_features, numerical_features, dataset_params):
+    X = df.drop(columns=["duration", "event"])
+    X[categorical_features] = X[categorical_features].astype("category")
+    X[numerical_features] = X[numerical_features].astype("float64")
+    y = df[["duration", "event"]]
+
+    return dict(
+        X=X,
+        y=y,
+        categorical_columns=categorical_features,
+        numeric_columns=numerical_features,
+    )
 
 
 def get_model(bunch, best_hp):
@@ -407,6 +438,7 @@ def hp_search(bunch):
     
     y_val = bunch["y_val"]
     event_val, duration_val = y_val["event"], y_val["duration"]
+    import ipdb; ipdb.set_trace()
 
     for param in tqdm(params):
         print(f"{param=}")
@@ -463,6 +495,6 @@ def make_recarray(y):
 
 # %%
 if __name__ == "__main__":
-    run_evaluation("seer")
+    run_evaluation("metabric")
 
 # %%
